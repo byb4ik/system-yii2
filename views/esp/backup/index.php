@@ -28,7 +28,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
 
         if (Yii::$app->user->identity != null) {
-            if (10 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']) {
+            if (15 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']) {
 
                 $gridColumns = [
                     'id',

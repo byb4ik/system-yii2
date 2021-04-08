@@ -12,6 +12,7 @@ use yii\helpers\ArrayHelper;
  * @property int $id
  * @property int $user_id
  * @property int $market_point
+ * @property int $manager_id
  * @property int $valve
  * @property float|null $liter_base
  * @property float|null $liter_balance
@@ -30,6 +31,9 @@ use yii\helpers\ArrayHelper;
  * @property int $avrg_day
  * @property int $day_from_table
  * @property int $timer_set
+ * @property int $request_value
+ * @property int $request_count
+ * @property int $request_sum
  *
  */
 class Esp extends \yii\db\ActiveRecord
@@ -51,9 +55,14 @@ class Esp extends \yii\db\ActiveRecord
     {
         return [
             [['user_id', 'valve'], 'required'],
-            [['user_id', 'valve', 'mail_percent', 'price_buy', 'price_sale', 'avrg_day', 'day_from_table', 'hour_to_exp', 'sent_mail_exp', 'timer_set', 'market_point'], 'integer'],
-            [['liter_base', 'liter_balance', 'liter_all_time', 'liter_from_esp'], 'number'],
-            [['customer', 'address', 'drink_name', 'customer_name'], 'string', 'max' => 255],
+            [
+                ['user_id', 'valve', 'mail_percent', 'price_buy', 'price_sale',
+                    'avrg_day', 'day_from_table', 'hour_to_exp', 'sent_mail_exp',
+                    'timer_set', 'market_point', 'manager_id', 'request_value',
+                    'request_count', 'request_sum'],
+                'integer'],
+            [['liter_base', 'liter_balance', 'liter_all_time', 'liter_from_esp', 'avrg_value', 'customer'], 'number'],
+            [['address', 'drink_name', 'customer_name'], 'string', 'max' => 255],
             [['esp_date_import', 'esp_last_date'], 'string', 'max' => 100],
             [['summ_7days'], 'string'],
             [['avrg_day'], 'default', 'value' => 7],
@@ -69,6 +78,7 @@ class Esp extends \yii\db\ActiveRecord
             'id' => 'ID',
             'user_id' => 'ID Пользователя',
             'market_point' => 'Торговая точка',
+            'manager_id' => 'Торговый представитель',
             'valve' => 'Кран',
             'liter_base' => 'Литр Склад',
             'liter_balance' => 'Литр Остаток',
@@ -88,7 +98,10 @@ class Esp extends \yii\db\ActiveRecord
             'data_exp_storage' => 'Конечный срок реализации',
             'hour_to_exp' => 'Срок реализации(ч)',
             'sent_mail_exp' => 'Письмо отправлено',
-
+            'avrg_value' => 'Рек. к закупке',
+            'request_value' => 'Закупка (л)',
+            'request_count' => 'Закупка (шт)',
+            'request_sum' => 'Итого',
         ];
     }
 
@@ -107,6 +120,11 @@ class Esp extends \yii\db\ActiveRecord
         return $this->hasOne(Users::class, ['id' => 'market_point']);
     }
 
+    public function getManager()
+    {
+        return $this->hasOne(Users::class, ['id' => 'manager_id']);
+    }
+
     public function getAllUsers()
     {
         return ArrayHelper::map(Users::find()->all(), 'id', 'name_surname');
@@ -115,6 +133,11 @@ class Esp extends \yii\db\ActiveRecord
     public function getAllPoints()
     {
         return ArrayHelper::map(Users::find()->where(['behaviors' => 5])->all(), 'id', 'name_surname');
+    }
+
+    public function getAllManagers()
+    {
+        return ArrayHelper::map(Users::find()->where(['behaviors' => 15])->all(), 'id', 'name_surname');
     }
 
     public function getId($customer, $address, $drink_name)

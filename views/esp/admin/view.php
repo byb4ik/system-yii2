@@ -39,6 +39,7 @@ $this->params['breadcrumbs'][] = $this->title;
                 'id',
                 ['attribute' => 'roleName', 'label' => 'Продавец', 'value' => $model->user->name_surname],
                 ['attribute' => 'roleName', 'label' => 'Торговая точка', 'value' => $model->market->name_surname],
+                ['attribute' => 'roleName', 'label' => 'Торговый представитель', 'value' => $model->manager->name_surname],
                 'valve',
                 'liter_base',
                 'liter_balance',

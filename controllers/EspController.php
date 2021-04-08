@@ -30,24 +30,50 @@ class EspController extends Controller
      */
     public function actionIndex()
     {
+
+        if (!empty(Yii::$app->request->post('editableKey'))) {
+            \Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+            $model_r = Esp::findOne(Yii::$app->request->post('editableKey'));
+            $attr = Yii::$app->request->post('editableAttribute');
+            $value = Yii::$app->request->post('Esp');
+            foreach ($value as $item) {
+                $value = $item;
+            }
+            $model_r->$attr = $value[$attr];
+            if ('request_count' == $attr) {
+                $model_r->setAttribute('request_sum', $model_r->request_value * $value[$attr]);
+            } else {
+                $model_r->setAttribute('request_sum', $model_r->request_value);
+            }
+            if ($model_r->save()) {
+                return $this->redirect(['/esp']);
+            }
+        }
         $this->checkAuth();
         $model = new Esp();
         $searchModel = new EspSearch();
         //для пользователя получаем id логина, получаем список по id
-        if (5 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']){
+        if (5 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']) {
             $query = Esp::find()->where(['market_point' => Yii::$app->user->id]);
+            $route = 'point';
         }
-        if (10 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']){
-            $query = Esp::find()->where(['user_id' => Yii::$app->user->id]);
+        if (15 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']) {
+            $query = Esp::find()->where(['manager_id' => Yii::$app->user->id]);
+            $route = 'manager';
         }
-        if (1 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']){
+        if (10 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']) {
             $query = Esp::find()->where(['user_id' => Yii::$app->user->id]);
+            $route = 'seller';
+        }
+        if (1 == Users::findIdentity(Yii::$app->user->getId())->attributes['behaviors']) {
+            $query = Esp::find()->where(['user_id' => Yii::$app->user->id]);
+            $route = 'admin';
         }
         $provider = $searchModel->search(Yii::$app->request->queryParams, $query);
         //для админа
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
-        return $this->render('index', [
+        return $this->render($route . '/index', [
             'data' => $provider,
             'model' => $model,
             'dataProvider' => $dataProvider,
@@ -65,8 +91,7 @@ class EspController extends Controller
     {
         $this->checkAuth();
 
-        return $this->render('view', [
-
+        return $this->render('manager/view', [
             'model' => $this->findModel($id),
         ]);
     }
@@ -106,10 +131,10 @@ class EspController extends Controller
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
 
-            return $this->redirect(['view', 'id' => $model->id]);
+            return $this->redirect(['/esp/' . $model->id]);
         }
 
-        return $this->render('update', [
+        return $this->render('admin/update', [
             'model' => $model,
         ]);
     }
@@ -127,7 +152,7 @@ class EspController extends Controller
 
         $this->findModel($id)->delete();
 
-        return $this->redirect(['index']);
+        return $this->redirect(['admin/index']);
     }
 
     /**
@@ -148,112 +173,6 @@ class EspController extends Controller
         throw new NotFoundHttpException('The requested page does not exist.');
     }
 
-    public function actionImport()
-    {
-        $this->checkAuth();
-
-        $dir_files = array_diff(scandir('uploads/'), ['.', '..']);
-        $messages = [];
-        foreach ($dir_files as $xmllink) {
-            $file = file_get_contents('uploads/' . $xmllink);
-            try {
-                $xml = simplexml_load_string($file);
-                $json = json_encode($xml);
-                $array = json_decode($json, TRUE);
-
-                if (isset($array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['ИдСв']['СвОрг']['СвЮЛ']['@attributes']['ИННЮЛ']) && !empty($array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['ИдСв']['СвОрг']['СвЮЛ']['@attributes']['ИННЮЛ'])) {
-                    $customer = $array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['ИдСв']['СвОрг']['СвЮЛ']['@attributes']['ИННЮЛ'];
-                    $address = $array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['Адрес']['АдрИнф']['@attributes']['АдрТекст'];
-                    $counter = 0;
-                    if (isset($array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов']['0'])) {
-                        foreach ($array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов'] as $value) {
-                            $drink_name = $value['@attributes']['НаимТов'];
-                            $count = $value['@attributes']['НеттоПередано'];
-                            $model = $this->findModel((new Esp())->getId($customer, $address, $drink_name));
-
-                            if (isset($model) && !empty($model)) {
-                                $model->setlbase($count);
-                                $model->setlbalance($count);
-                                $model->esp_date_import = date("Y-m-d H:i:s");
-
-                                if ($model->save()) {
-                                    $counter += 1;
-                                    $messages[] = [$address => $drink_name . ' = ' . $count];
-                                }
-                            }
-                        }
-                    } else {
-                        $drink_name = $array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов']['@attributes']['НаимТов'];
-                        $count = $array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов']['@attributes']['НеттоПередано'];
-                        $model = $this->findModel((new Esp())->getId($customer, $address, $drink_name));
-
-                        if (isset($model) && !empty($model)) {
-                            $model->setlbase($count);
-                            $model->setlbalance($count);
-                            $model->esp_date_import = date("Y-m-d H:i:s");
-                            if ($model->save()) {
-                                $counter += 1;
-                                $messages[] = [$address => $drink_name . ' = ' . $count];
-                                $counter += 1;
-                            }
-                        }
-                    }
-                    if ($counter >= 1) {
-                        unlink('uploads/' . $xmllink);
-                    }
-                }
-                if (isset($array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['ИдСв']['СвИП']['@attributes']['ИННФЛ']) && !empty($array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['ИдСв']['СвИП']['@attributes']['ИННФЛ'])) {
-                    $customer = $array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['ИдСв']['СвИП']['@attributes']['ИННФЛ'];
-                    $address = $array['Документ']['СвДокПТПрКроме']['СвДокПТПр']['СодФХЖ1']['ГрузПолуч']['Адрес']['АдрИнф']['@attributes']['АдрТекст'];
-                    $counter = 0;
-                    if (isset($array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов']['0'])) {
-                        foreach ($array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов'] as $value) {
-                            $drink_name = $value['@attributes']['НаимТов'];
-                            $count = $value['@attributes']['НеттоПередано'];
-                            $model = $this->findModel((new Esp())->getId($customer, $address, $drink_name));
-
-                            if (isset($model) && !empty($model)) {
-                                $model->setlbase($count);
-                                $model->setlbalance($count);
-                                $model->esp_date_import = date("Y-m-d H:i:s");
-                                if ($model->save()) {
-                                    $counter += 1;
-                                    $messages[] = [$address => $drink_name . ' = ' . $count];
-                                }
-                            }
-                        }
-                    } else {
-                        $drink_name = $array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов']['@attributes']['НаимТов'];
-                        $count = $array['Документ']['СвДокПТПрКроме']['СодФХЖ2']['СвТов']['@attributes']['НеттоПередано'];
-                        $model = $this->findModel((new Esp())->getId($customer, $address, $drink_name));
-
-                        if (isset($model) && !empty($model)) {
-                            $model->setlbase($count);
-                            $model->setlbalance($count);
-                            $model->esp_date_import = date("Y-m-d H:i:s");
-                            if ($model->save()) {
-                                $counter += 1;
-                                $messages[] = [$address => $drink_name . ' = ' . $count];
-                                $counter += 1;
-                            }
-                        }
-                    }
-                    if ($counter >= 1) {
-                        unlink('uploads/' . $xmllink);
-                    }
-
-                }
-
-
-            } catch (Exception $e) {
-                if (file_exists('uploads/' . $xmllink))
-                    unlink('uploads/' . $xmllink);
-            }
-        }
-
-        return $this->render('import', ['messages' => $messages]);
-    }
-
     public function checkAuth()
     {
         if (Yii::$app->user->isGuest) {
@@ -265,11 +184,9 @@ class EspController extends Controller
     {
         if (isset($id) && !empty($id)) {
             $esp_model = $this->findModel($id);
-
             $current_time = date("Y-m-d H:i:s");
             $hour_to_exp = $esp_model->attributes['hour_to_exp'];
             $current_time_exp = date("Y-m-d H:i:s", strtotime('+' . $hour_to_exp . ' hours'));
-
             $esp_model->setAttribute('data_set_storage', date("Y-m-d H:i:s"));
             $esp_model->setAttribute('data_exp_storage', $current_time_exp);
             $esp_model->setAttribute('timer_set', 1);
@@ -279,7 +196,22 @@ class EspController extends Controller
 
             return $this->redirect(['esp/' . $id]);
         }
-            return $this->redirect(['esp/'. $id]);
+        return $this->redirect(['esp/' . $id]);
+    }
+
+    public function actionEditable()
+    {
+        $model = new Esp();
+
+        if (isset($_POST['hasEditable'])) {
+            \Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+            if ($model->load($_POST)) {
+                $value = $model->request_value;
+                return ['output' => $value, 'message' => ''];
+            } else {
+                return ['output' => 'er', 'message' => 'err'];
+            }
+        }
     }
 
 }

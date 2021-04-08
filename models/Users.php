@@ -97,8 +97,17 @@ class Users extends \yii\db\ActiveRecord implements IdentityInterface
         return $this->hasMany(Esp::className(), ['id' => 'market_point']);
     }
 
+    public function getManager()
+    {
+        return $this->hasMany(Esp::className(), ['id' => 'manager_id']);
+    }
+
     public function getBehaviorList()
     {
-        return [ 10 => 'Продавец', 5 => 'Торговая точка', 1 => 'Админ'];
+        return [
+            15 => 'Торговый представитель',
+            10 => 'Продавец',
+            5 => 'Торговая точка',
+            1 => 'Админ'];
     }
 }

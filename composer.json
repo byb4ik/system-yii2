@@ -23,7 +23,11 @@
         "ext-json": "*",
       "ext-zip": "*",
         "kartik-v/yii2-export": "@dev",
-        "miloschuman/yii2-highcharts-widget": "*"
+        "miloschuman/yii2-highcharts-widget": "*",
+        "kartik-v/yii2-grid": "dev-master",
+        "kartik-v/yii2-widget-colorinput": "*",
+        "kartik-v/yii2-editable": "@dev",
+        "kartik-v/yii2-widget-touchspin": "@dev"
     },
     "require-dev": {
         "yiisoft/yii2-debug": "~2.1.0",
