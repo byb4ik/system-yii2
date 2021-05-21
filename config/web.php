@@ -42,8 +42,8 @@ $config = [
                 'encryption' => 'ssl',
                 'host' => 'smtp.gmail.com',
                 'port' => '465',
-                'username' => 'umnoepivo@gmail.com',
-                'password' => 'ulthfcnenwdtns',
+                'username' => '***',
+                'password' => '***',
             ],
 
         ],
